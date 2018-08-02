@@ -11,6 +11,7 @@ class filter:
     content = ""
     __path = ""
     def __init__(self,path):
+        self.headers = ["q",'a','time']
         ini_path = "filter.ini"  #配置文件
         self.__path = path
         if not os.path.exists(ini_path):
@@ -30,17 +31,27 @@ class filter:
             except UnicodeDecodeError:
                 with open(ini_path,encoding="gbk") as rd_1:
                     self.reg_pattern = rd_1.read()
+
     def analayis(self):
     #第一层小标题 reg_pattern
         temp_part = ""
-        reg_pattern_2 = "关于(.*?)实施意见"
+        reg_pattern_2 = "关于(.*?)的实施意见"
+        reg_pattern_3 = "关于(.*?)的通知"
+        reg_pattern_4 = "[\s\S]{4}年[\s\S]{1,2}月[\s\S]{1,2}日"
         reg_1 = re.compile(self.reg_pattern)
         reg_2 = re.compile(reg_pattern_2)
+        reg_3 = re.compile(reg_pattern_3)
+        reg_4 = re.compile(reg_pattern_4)
         title_list = reg_1.findall(self.content)
+        time_list = reg_4.findall(self.content)
+        if not len(time_list):
+            time = "待定"
+        else:
+            time = time_list[0]
         if not len(reg_2.findall(self.__path)):
-            return
-        zt_word = reg_2.findall(self.__path)[0]
-
+            zt_word = reg_2.findall(self.__path)[0]
+        else:
+            zt_word = reg_2.findall(self.__path)[0]
         # try:
         #     title_list = reg_1.findall(self.content)
         #     zt_word = reg_2.findall(self.__path)[0]
@@ -67,30 +78,46 @@ class filter:
                 self.__1_dict[title_list.index(title)] = part
             temp_part = self.content.split(title)[0]
         # print(self.__1_dict[4])
-        return zt_word,title_list,self.__1_dict
+        return zt_word,title_list,self.__1_dict,time
         # str   list  dict
-    def get_qa(self,T,zt_word,title_list,__1_dict):
+    def get_qa(self,T,zt_word,title_list,__1_dict,time):#关于实施意见
         # f = open("qa_1.txt","a",encoding="utf-8")
-        headers = ["q",'a']
         qa_data = []
-        ff = open("qa_2.txt","a",encoding="utf-8")
-        for i in range(len(title_list)-1):
-            qa = {}
-            # print(__1_dict[3])
-            words,pos,roles = T.nltk(title_list[i].split("、")[1])
-            # print(title_list[i].split("、")[1],file = ff)
-            # for role in roles:
-            #     print( role.index, "".join(["%s:(%d,%d)" % (arg.name, arg.range.start, arg.range.end) for arg in role.arguments]),file=ff)
-            if len(roles) == 1 and len(roles[0].arguments) == 1 and roles[0].arguments[0].name == "A1":
-                question =zt_word +"的"+ title_list[i].split("、")[1] + "?"
-                answer = __1_dict[i+1]
-                print("问题："+question+"\n"+"答案；"+answer+"\n",file=ff)
-                qa["q"] = question
-                qa["a"] = answer
-                qa_data.append(qa)
+        qa = {}
+        # ff = open("qa_3.txt","a",encoding="utf-8")
+        # print("问题："+zt_word+"\n","答案："+"\n"+"\n".join(title_list)+"\n",file=open("qa_4.txt",'a',encoding="utf-8"))
+        question = zt_word
+        answer = "\n".join(title_list)
+        qa["q"] = question
+        qa["a"] = answer
+        qa["time"] = time
+        with open('qa3.csv', 'a', newline='') as f:
+        # 标头在这里传入，作为第一行数据
+            writer = csv.DictWriter(f, self.headers)
+            writer.writerow(qa)
+            for i in range(len(title_list)-1):
+                # print(__1_dict[3])
+                words,pos,roles = T.nltk(title_list[i].split("、")[1])
+                # print(title_list[i].split("、")[1],file = ff)
+                # for role in roles:
+                #     print( role.index, "".join(["%s:(%d,%d)" % (arg.name, arg.range.start, arg.range.end) for arg in role.arguments]),file=ff)
+                if len(roles) == 1 and len(roles[0].arguments) == 1 and roles[0].arguments[0].name == "A1":
+                    question =zt_word +"的"+ title_list[i].split("、")[1] + "?"
+                    answer = __1_dict[i+1]
+                    # print("问题："+question+"\n"+"答案；"+answer+"\n",file=ff)
+                    qa["q"] = question
+                    qa["a"] = answer
+                    qa["time"] = time
+                    qa_data.append(qa)
+                    for row in qa_data:
+                        writer.writerow(row)
+                # with open('qa2.csv', 'a', newline='') as f:
+                # # 标头在这里传入，作为第一行数据
+                #     writer = csv.DictWriter(f, self.headers)
 
-
-        # with open('qa.csv', 'w', newline='') as f:
+        #
+        #
+        # with open('qa.csv', 'a', newline='') as f:
         # # 标头在这里传入，作为第一行数据
         #     writer = csv.DictWriter(f, headers)
         #     writer.writeheader()
